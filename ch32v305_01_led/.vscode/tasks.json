@@ -22,6 +22,31 @@
       "label": "down by openocd",
       "type": "shell",
       "command": "${env:RISCV_OPENOCD_PATH}/openocd -f ${env:RISCV_OPENOCD_PATH}/wch-riscv.cfg -c 'init;halt;program build/ch32v305_fw.bin 0x0;reset;resume;exit'"
-    }              
+    },
+ 
+    {
+      "label": "run-openocd",
+      "type": "process",
+      "isBackground": true,
+      "command": "${env:RISCV_OPENOCD_PATH}/openocd",
+      "args": ["-f", "${env:RISCV_OPENOCD_PATH}/wch-riscv.cfg"],
+      "problemMatcher": [
+        {
+          "pattern": [
+          {
+            "regexp": ".",
+            "file": 1,
+            "location": 2,
+            "message": 3
+          }
+          ],
+          "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": ".",
+          }
+        }
+        ]
+    }    
   ]
 }
