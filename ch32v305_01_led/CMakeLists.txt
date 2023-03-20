@@ -70,6 +70,8 @@ target_compile_options(${EXECUTABLE} PRIVATE
 
   -std=gnu99 -MMD -MP
   
+  #-save-temps -fverbose-asm  # make asm file
+  
   -Wall
   -g3
   -Og

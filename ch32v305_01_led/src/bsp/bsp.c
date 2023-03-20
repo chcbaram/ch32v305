@@ -38,10 +38,12 @@ uint32_t millis(void)
   return systick_counter;
 }
 
-void SysTick_Handler(void) __attribute__((interrupt("machine")));
+void SysTick_Handler(void) __attribute__((naked));
 void SysTick_Handler(void)
 {
   systick_counter++;
   SysTick->SR = 0;
+
+  __asm volatile ("mret");
 }
 
