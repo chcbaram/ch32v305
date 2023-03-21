@@ -9,3 +9,5 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+ch32v305_01_led/.vscode/c_cpp_properties.json
+ch32v305_02_uart/.vscode/c_cpp_properties.json
