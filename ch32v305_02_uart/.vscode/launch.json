@@ -14,6 +14,7 @@
       "cwd": "${workspaceRoot}",
       "valuesFormatting": "parseText",
       "preLaunchTask": "run-openocd",
+      "stopAtEntry": true,
       "gdbpath": "${env:RISCV_TOOLCHAIN_DIR}/riscv-none-elf-gdb",
       "autorun": [
         "set mem inaccessible-by-default off",
@@ -21,7 +22,6 @@
         "set remotetimeout unlimited",
         "monitor reset halt",
         "load",
-        "break _main",
       ]
     },
   ]
