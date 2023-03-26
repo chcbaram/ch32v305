@@ -74,9 +74,9 @@
     #include "class/cdc/cdc_device.h"
   #endif
 
-  // #if CFG_TUD_MSC
+  #if CFG_TUD_MSC
     #include "class/msc/msc_device.h"
-  // #endif
+  #endif
 
   #if CFG_TUD_AUDIO
     #include "class/audio/audio_device.h"
