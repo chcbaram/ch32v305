@@ -50,6 +50,9 @@ SECTIONS
 
 	.text :
 	{
+    . = ALIGN(1024);
+    KEEP (*(.version))
+
 		. = ALIGN(4);
 		*(.text)
 		*(.text.*)

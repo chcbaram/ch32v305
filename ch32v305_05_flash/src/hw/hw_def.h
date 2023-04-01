@@ -6,7 +6,7 @@
 #include "bsp.h"
 
 
-#define _DEF_FIRMWATRE_VERSION    "V230319R1"
+#define _DEF_FIRMWATRE_VERSION    "V230402R1"
 #define _DEF_BOARD_NAME           "CH32V305_FW"
 
 

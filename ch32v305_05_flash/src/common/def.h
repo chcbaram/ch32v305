@@ -89,6 +89,12 @@
 #endif
 
 
+#define MAGIC_NUMBER              0x5555AAAA
+#define FLASH_MAGIC_NUMBER        0x5555AAAA
+
+#define VERSION_MAGIC_NUMBER      0x56455220    // "VER "
+#define TAG_MAGIC_NUMBER          0x54414720    // "TAG "
+
 typedef union
 {
   uint8_t  u8Data[4];
@@ -107,5 +113,22 @@ typedef union
   int16_t  s16D;
   int32_t  s32D;
 } data_t;
+
+typedef struct 
+{
+  uint32_t magic_number;
+  char version_str[32];
+  char name_str[32];
+} firm_ver_t;
+
+typedef struct 
+{
+  uint32_t magic_number;
+  uint32_t fw_addr;
+  uint32_t fw_size;
+  uint32_t fw_crc;
+
+  uint32_t tag_crc;
+} firm_tag_t;
 
 #endif
