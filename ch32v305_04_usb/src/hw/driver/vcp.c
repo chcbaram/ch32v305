@@ -21,19 +21,12 @@ bool vcpInit(void)
 bool vcpFlush(void)
 {
 
-  tud_cdc_read_flush();
-  tud_cdc_write_flush();
-
   return true;
 }
 
 uint32_t vcpGetBaud(void)
 {
-  cdc_line_coding_t cdc_line;
-
-  tud_cdc_get_line_coding (&cdc_line);
-
-  return cdc_line.bit_rate;
+  return usbhsCdcDriver()->getBaud();
 }
 
 uint32_t vcpAvailable(void)
@@ -41,7 +34,7 @@ uint32_t vcpAvailable(void)
   if (!vcpIsConnected())
     return 0;
 
-  return tud_cdc_available();
+  return usbhsCdcDriver()->available();
 }
 
 uint32_t vcpWrite(uint8_t *p_data, uint32_t length)
@@ -51,9 +44,8 @@ uint32_t vcpWrite(uint8_t *p_data, uint32_t length)
   if (vcpIsConnected() != true)
     return 0;
 
-  ret = tud_cdc_write(p_data, length);
-  tud_cdc_write_flush();
-
+  ret = usbhsCdcDriver()->write(p_data, length);
+  
   return ret;
 }
 
@@ -61,14 +53,17 @@ uint8_t  vcpRead(void)
 {
   uint8_t ret = 0;
 
-  tud_cdc_read (&ret, 1);
+  usbhsCdcDriver()->read(&ret, 1);
 
   return ret;
 }
 
 bool vcpIsConnected(void)
 {
-  return tud_cdc_connected();
+  bool ret;
+
+  ret = usbhsCdcDriver()->isConnected() & usbhsCdcDriver()->isOpen();
+  return ret;
 }
 
 uint32_t vcpPrintf( const char *fmt, ...)

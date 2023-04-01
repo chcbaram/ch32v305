@@ -111,7 +111,7 @@ typedef struct
   bool     (*flush)(void);
   uint32_t (*available)(void);
   uint32_t (*write)(uint8_t *p_data, uint32_t length);
-  uint8_t  (*read)(void);
+  uint32_t (*read)(uint8_t *p_data, uint32_t length);
   bool     (*isConnected)(void);
   bool     (*isOpen)(void);
   uint32_t (*getBaud)(void);  
@@ -120,8 +120,10 @@ typedef struct
 
 void usbhsCdcInit(void);
 void usbhsCdcUpdate(void);
+bool usbhsIsConnected(void);
+bool usbhsIsOpen(void);
 
-usbhs_cdc_driver_t *usbhsCdc(void);
+usbhs_cdc_driver_t *usbhsCdcDriver(void);
 
 #ifdef __cplusplus
 }

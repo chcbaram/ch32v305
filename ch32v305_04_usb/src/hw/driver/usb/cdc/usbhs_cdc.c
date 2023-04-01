@@ -32,7 +32,10 @@ typedef struct
 
 
 
-void USBHS_IRQHandler(void) __attribute__((naked));
+// void USBHS_IRQHandler(void) __attribute__((naked));
+void USBHS_IRQHandler(void) __attribute__((interrupt("machine")));
+
+
 void usbhsCdcRccInit(void);
 void usbhsCdcEnable(FunctionalState sta);
 
@@ -64,18 +67,25 @@ __attribute__ ((aligned(4))) uint8_t USBHS_EP3_Tx_Buf[ DEF_USB_EP3_HS_SIZE ];
 /* Endpoint tx busy flag */
 volatile uint8_t  USBHS_Endp_Busy[ DEF_UEP_NUM ];
 static line_coding_t line_coding;
+
 qbuffer_t q_rx;
-static uint8_t q_rx_buf[2048];
+qbuffer_t q_tx;
 volatile bool q_rx_full = false;
+volatile bool q_tx_busy = false;
+static uint8_t q_tx_buf[2048];
+static uint8_t q_rx_buf[2048];
+
 
 volatile bool is_connected = false;
 volatile bool is_open = false;
 
 
 
+
 void usbhsCdcInit(void)
 {
   qbufferCreate(&q_rx, q_rx_buf, 2048);
+  qbufferCreate(&q_tx, q_tx_buf, 2048);
 
   memset(&line_coding, 0, sizeof(line_coding));
 
@@ -156,128 +166,10 @@ void usbhsCdcEnable(FunctionalState sta)
   }
 }
 
-/*********************************************************************
- * @fn      USBHD_Send_Resume
- *
- * @brief   USBHD device sends wake-up signal to host
- *
- * @return  none
- */
-void USBHD_Send_Resume(void)
+void usbhsCdcSendResume(void)
 {
 
 }
-
-/*********************************************************************
- * @fn      USBHS_Endp_DataUp
- *
- * @brief   usbhd-hs device data upload
- *          input: endp  - end-point numbers
- *                 *pubf - data buffer
- *                 len   - load data length
- *                 mod   - 0: DEF_UEP_DMA_LOAD 1: DEF_UEP_CPY_LOAD
- *
- * @return  none
- */
-// uint8_t USBHS_Endp_DataUp( uint8_t endp, uint8_t *pbuf, uint16_t len, uint8_t mod )
-// {
-//     uint8_t endp_buf_mode, endp_en, endp_tx_ctrl;
-
-//     /* DMA config, endp_ctrl config, endp_len config */
-//     if( (endp>=DEF_UEP1) && (endp<=DEF_UEP15) )
-//     {
-//         endp_en =  USBHSD->ENDP_CONFIG;
-//         if( endp_en & USBHSD_UEP_TX_EN( endp ) )
-//         {
-//             if( (USBHS_Endp_Busy[ endp ] & DEF_UEP_BUSY) == 0x00 )
-//             {
-//                 endp_buf_mode = USBHSD->BUF_MODE;
-//                 /* if end-point buffer mode is double buffer */
-//                 if( endp_buf_mode & USBHSD_UEP_DOUBLE_BUF( endp ) )
-//                 {
-//                     /* end-point buffer mode is double buffer */
-//                     /* only end-point tx enable  */
-//                     if( (endp_en & USBHSD_UEP_RX_EN( endp )) == 0x00 )
-//                     {
-//                         endp_tx_ctrl = USBHSD_UEP_TXCTRL( endp );
-//                         if( mod == DEF_UEP_DMA_LOAD )
-//                         {
-//                             if( endp_tx_ctrl & USBHS_UEP_T_TOG_DATA1 )
-//                             {
-//                                 /* use UEPn_TX_DMA */
-//                                 USBHSD_UEP_TXDMA( endp ) = (uint32_t)pbuf;
-//                             }
-//                             else
-//                             {
-//                                 /* use UEPn_RX_DMA */
-//                                 USBHSD_UEP_RXDMA( endp ) = (uint32_t)pbuf;
-//                             }
-//                         }
-//                         else if( mod == DEF_UEP_CPY_LOAD )
-//                         {
-//                             if( endp_tx_ctrl & USBHS_UEP_T_TOG_DATA1 )
-//                             {
-//                                 /* use UEPn_TX_DMA */
-//                                 memcpy( USBHSD_UEP_TXBUF(endp), pbuf, len );
-//                             }
-//                             else
-//                             {
-//                                 /* use UEPn_RX_DMA */
-//                                 memcpy( USBHSD_UEP_RXBUF(endp), pbuf, len );
-//                             }
-//                         }
-//                         else
-//                         {
-//                             return 1;
-//                         }
-//                     }
-//                     else
-//                     {
-//                         return 1;
-//                     }
-//                 }
-//                 else
-//                 {
-//                     /* end-point buffer mode is single buffer */
-//                     if( mod == DEF_UEP_DMA_LOAD )
-//                     {
-
-//                         USBHSD_UEP_TXDMA( endp ) = (uint32_t)pbuf;
-//                     }
-//                     else if( mod == DEF_UEP_CPY_LOAD )
-//                     {
-//                         /* if end-point buffer mode is double buffer */
-//                         memcpy( USBHSD_UEP_TXBUF(endp), pbuf, len );
-//                     }
-//                     else
-//                     {
-//                         return 1;
-//                     }
-//                 }
-
-//                 /* end-point n response tx ack */
-//                 USBHSD_UEP_TLEN( endp ) = len;
-//                 USBHSD_UEP_TXCTRL( endp ) = (USBHSD_UEP_TXCTRL( endp ) &= ~USBHS_UEP_T_RES_MASK) | USBHS_UEP_T_RES_ACK;
-//                 /* Set end-point busy */
-//                 USBHS_Endp_Busy[ endp ] |= DEF_UEP_BUSY;
-//             }
-//             else
-//             {
-//                 return 1;
-//             }
-//         }
-//         else
-//         {
-//             return 1;
-//         }
-//     }
-//     else
-//     {
-//         return 1;
-//     }
-
-//     return 0;
-// }
 
 void usbhsCdcUpdate(void)
 {
@@ -289,6 +181,20 @@ void usbhsCdcUpdate(void)
       USBHSD->UEP2_RX_CTRL |= USBHS_UEP_R_RES_ACK;
       q_rx_full = false;
     }
+  }
+
+  uint32_t tx_len;
+  
+  tx_len = qbufferAvailable(&q_tx);
+  if (q_tx_busy == false && tx_len > 0)
+  {
+    if (tx_len > DEF_USB_EP2_HS_SIZE)
+      tx_len = DEF_USB_EP2_HS_SIZE;
+    
+    qbufferRead(&q_tx, USBHS_EP2_Tx_Buf, tx_len); 
+    USBHSD->UEP2_TX_LEN  = tx_len;
+    USBHSD->UEP2_TX_CTRL = (USBHSD->UEP2_TX_CTRL & ~USBHS_UEP_T_RES_MASK) | USBHS_UEP_T_RES_ACK;
+    q_tx_busy = true;
   }
 }
 
@@ -305,15 +211,62 @@ uint32_t usbhsCdcAvailable(void)
 
 uint32_t usbhsCdcWrite(uint8_t *p_data, uint32_t length)
 {
-  // TODO : 구현해야 함 
-  return 0;
+  uint32_t ret = 0;
+  uint32_t pre_time;
+  uint32_t tx_len;
+  uint32_t buf_len;
+  uint32_t sent_len;
+
+
+  if (usbhsIsConnected() != true) return 0;
+  if (usbhsIsOpen() != true) return 0;
+
+
+  sent_len = 0;
+
+  pre_time = millis();
+  while(sent_len < length)
+  {
+    buf_len = (q_tx.len - qbufferAvailable(&q_tx)) - 1;
+    tx_len = length - sent_len;
+
+    if (tx_len > buf_len)
+    {
+      tx_len = buf_len;
+    }
+
+    if (tx_len > 0)
+    {
+      qbufferWrite(&q_tx, p_data, tx_len);
+      p_data += tx_len;
+      sent_len += tx_len;
+    }
+    // else
+    // {
+    //   delay(1);
+    // }
+    
+    if (usbhsIsConnected() != true) break;
+    if (usbhsIsOpen() != true) break;
+
+    if (millis()-pre_time >= 100)
+    {
+      break;
+    }
+  }
+  ret = sent_len;
+
+  return ret;
 }
 
-uint8_t usbhsRead(void)
+uint32_t usbhsRead(uint8_t *p_data, uint32_t length)
 {
-  uint8_t ret = 0;
+  uint32_t ret = 0;
 
-  qbufferRead(&q_rx, &ret, 1);
+  if (qbufferRead(&q_rx, p_data, length) == false)
+  {
+    ret = 0;
+  }
 
   return ret;
 }
@@ -333,7 +286,7 @@ uint32_t usbhsCdcGetBaud(void)
   return line_coding.baud;
 }
 
-usbhs_cdc_driver_t *usbhsCdc(void)
+usbhs_cdc_driver_t *usbhsCdcDriver(void)
 {
   static usbhs_cdc_driver_t cdc = 
   {
@@ -353,6 +306,7 @@ void USBHS_IRQHandler(void)
 {
   uint8_t  intflag, intst, errflag;
   uint16_t len;
+  uint32_t tx_len;
 
   intflag = USBHSD->INT_FG;
   intst = USBHSD->INT_ST;
@@ -421,11 +375,35 @@ void USBHS_IRQHandler(void)
 
           /* end-point 1 data in interrupt */
           case USBHS_UIS_TOKEN_IN | DEF_UEP2:
-            USBHSD->UEP2_TX_CTRL = (USBHSD->UEP2_TX_CTRL & ~USBHS_UEP_T_RES_MASK) | USBHS_UEP_T_RES_NAK;
-            USBHSD->UEP2_TX_CTRL ^= USBHS_UEP_T_TOG_DATA1;
-            USBHS_Endp_Busy[ DEF_UEP2 ] &= ~DEF_UEP_BUSY;
-            // Uart.USB_Up_IngFlag = 0x00;
             logUsb("USBHS_UIS_TOKEN_IN | DEF_UEP2\n");
+
+            USBHSD->UEP2_TX_CTRL ^= USBHS_UEP_T_TOG_DATA1;
+
+            tx_len = qbufferAvailable(&q_tx);
+            if (tx_len > 0)
+            {
+              if (tx_len > DEF_USB_EP2_HS_SIZE)
+                tx_len = DEF_USB_EP2_HS_SIZE;
+              qbufferRead(&q_tx, USBHS_EP2_Tx_Buf, tx_len); 
+              USBHSD->UEP2_TX_LEN  = tx_len;
+              USBHSD->UEP2_TX_CTRL = (USBHSD->UEP2_TX_CTRL & ~USBHS_UEP_T_RES_MASK) | USBHS_UEP_T_RES_ACK;
+              q_tx_busy = true;
+            }
+            else
+            {
+              if (USBHSD->UEP2_TX_LEN == DEF_USB_EP2_HS_SIZE)
+              {
+                USBHSD->UEP2_TX_LEN = 0;
+                USBHSD->UEP2_TX_CTRL = (USBHSD->UEP2_TX_CTRL & ~USBHS_UEP_T_RES_MASK) | USBHS_UEP_T_RES_ACK;
+                q_tx_busy = true;
+              }
+              else
+              {
+                USBHSD->UEP2_TX_LEN = 0;
+                USBHSD->UEP2_TX_CTRL = (USBHSD->UEP2_TX_CTRL & ~USBHS_UEP_T_RES_MASK) | USBHS_UEP_T_RES_NAK;
+                q_tx_busy = false;
+              }
+            }
             break;
 
           /* end-point 4 data in interrupt */
@@ -983,7 +961,7 @@ void USBHS_IRQHandler(void)
     USBHSD->INT_FG = intflag;
   }
 
-  __asm volatile ("mret");
+  // __asm volatile ("mret");
 }
 
 

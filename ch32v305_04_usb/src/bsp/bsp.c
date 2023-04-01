@@ -40,7 +40,8 @@ uint32_t millis(void)
 
 extern void usbhsCdcUpdate(void);
 
-void SysTick_Handler(void) __attribute__((naked));
+// void SysTick_Handler(void) __attribute__((naked));
+void SysTick_Handler(void) __attribute__((interrupt("machine")));
 void SysTick_Handler(void)
 {
   systick_counter++;
@@ -48,6 +49,6 @@ void SysTick_Handler(void)
 
   usbhsCdcUpdate();
 
-  __asm volatile ("mret");
+  // __asm volatile ("mret");
 }
 

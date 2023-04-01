@@ -2,6 +2,7 @@
 
 #include "usb.h"
 #include "usbhs_cdc.h"
+#include "cli.h"
 
 
 

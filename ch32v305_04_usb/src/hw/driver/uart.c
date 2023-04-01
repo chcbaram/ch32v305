@@ -1,5 +1,6 @@
 #include "uart.h"
 #include "qbuffer.h"
+#include "vcp.h"
 
 #ifdef _USE_HW_UART
 
@@ -18,6 +19,9 @@ typedef struct
   USART_InitTypeDef    huart_init;
   DMA_Channel_TypeDef *hdma_rx;
   DMA_InitTypeDef      hdma_rx_init;
+
+  uint32_t rx_cnt;
+  uint32_t tx_cnt;
 } uart_tbl_t;
 
 
@@ -33,6 +37,8 @@ bool uartInit(void)
   {
     uart_tbl[i].is_open = false;
     uart_tbl[i].baud = 57600;
+    uart_tbl[i].rx_cnt = 0;
+    uart_tbl[i].tx_cnt = 0;
   }
 
   is_init = true;
@@ -129,6 +135,11 @@ bool uartOpen(uint8_t ch, uint32_t baud)
       uart_tbl[ch].is_open = true;
       ret = true;
       break;
+
+    case _DEF_UART2:      
+      uart_tbl[ch].is_open = true;
+      ret = true;    
+      break;
   }
 
   return ret;
@@ -153,6 +164,10 @@ uint32_t uartAvailable(uint8_t ch)
     case _DEF_UART1:
       uart_tbl[ch].qbuffer.in = (uart_tbl[ch].qbuffer.len - uart_tbl[ch].hdma_rx->CNTR);
       ret = qbufferAvailable(&uart_tbl[ch].qbuffer);      
+      break;
+
+    case _DEF_UART2:
+      ret = vcpAvailable();
       break;
   }
 
@@ -186,8 +201,15 @@ uint8_t uartRead(uint8_t ch)
   {
     case _DEF_UART1:
       qbufferRead(&uart_tbl[ch].qbuffer, &ret, 1);
+      uart_tbl[ch].rx_cnt++;
+      break;
+
+    case _DEF_UART2:
+      ret = vcpRead();
       break;
   }
+
+  uart_tbl[ch].rx_cnt++;
 
   return ret;
 }
@@ -224,9 +246,14 @@ uint32_t uartWrite(uint8_t ch, uint8_t *p_data, uint32_t length)
         }
       }
       break;
+
+    case _DEF_UART2:
+      count = vcpWrite(p_data, length);
+      break;
   }
 
   ret = count;
+  uart_tbl[ch].tx_cnt += count;
 
   return ret;
 }
@@ -278,4 +305,17 @@ uint32_t uartGetBaud(uint8_t ch)
   return ret;
 }
 
+uint32_t uartGetRxCnt(uint8_t ch)
+{
+  if (ch >= UART_MAX_CH) return 0;
+
+  return uart_tbl[ch].rx_cnt;
+}
+
+uint32_t uartGetTxCnt(uint8_t ch)
+{
+  if (ch >= UART_MAX_CH) return 0;
+
+  return uart_tbl[ch].tx_cnt;
+}
 #endif
