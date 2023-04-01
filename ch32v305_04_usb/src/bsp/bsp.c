@@ -38,7 +38,7 @@ uint32_t millis(void)
   return systick_counter;
 }
 
-extern void usbhsDeviceUpdate(void);
+extern void usbhsCdcUpdate(void);
 
 void SysTick_Handler(void) __attribute__((naked));
 void SysTick_Handler(void)
@@ -46,7 +46,7 @@ void SysTick_Handler(void)
   systick_counter++;
   SysTick->SR = 0;
 
-  usbhsDeviceUpdate();
+  usbhsCdcUpdate();
 
   __asm volatile ("mret");
 }

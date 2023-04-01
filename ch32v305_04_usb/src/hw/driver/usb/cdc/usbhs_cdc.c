@@ -9,13 +9,13 @@
 * Attention: This software (modified or not) and binary are used for 
 * microcontroller manufactured by Nanjing Qinheng Microelectronics.
 *******************************************************************************/
-#include "usbhs_device.h"
+#include "usbhs_cdc.h"
 #include "qbuffer.h"
 
 #if 0
-#define logUsb  logPrintf
+#define logUsb(fmt, ...)  logPrintf(fmt, ##__VA_ARGS__)
 #else
-#define logUsb(x)  
+#define logUsb(fmt, ...)  
 #endif
 
 
@@ -25,14 +25,16 @@ typedef struct
   uint8_t  stop;
   uint8_t  parity;
   uint8_t  data;
+  uint8_t  dtr;
+  uint8_t  rts;
   uint8_t  buf[8];
 } line_coding_t;
 
 
 
 void USBHS_IRQHandler(void) __attribute__((naked));
-void usbhsDeviceRccInit(void);
-void usbhsDeviceEnable(FunctionalState sta);
+void usbhsCdcRccInit(void);
+void usbhsCdcEnable(FunctionalState sta);
 
 
 /* Variable Definition */
@@ -63,23 +65,25 @@ __attribute__ ((aligned(4))) uint8_t USBHS_EP3_Tx_Buf[ DEF_USB_EP3_HS_SIZE ];
 volatile uint8_t  USBHS_Endp_Busy[ DEF_UEP_NUM ];
 static line_coding_t line_coding;
 qbuffer_t q_rx;
-static uint8_t q_rx_buf[4*1024];
-volatile uint32_t sof_cnt = 0;
-
+static uint8_t q_rx_buf[2048];
 volatile bool q_rx_full = false;
 
+volatile bool is_connected = false;
+volatile bool is_open = false;
 
 
 
-void usbhsDeviceInit(void)
+void usbhsCdcInit(void)
 {
-  qbufferCreate(&q_rx, q_rx_buf, 4*1024);
+  qbufferCreate(&q_rx, q_rx_buf, 2048);
 
-  usbhsDeviceRccInit();
-  usbhsDeviceEnable(ENABLE);
+  memset(&line_coding, 0, sizeof(line_coding));
+
+  usbhsCdcRccInit();
+  usbhsCdcEnable(ENABLE);
 }
 
-void usbhsDeviceRccInit(void)
+void usbhsCdcRccInit(void)
 {
   RCC_USBCLK48MConfig( RCC_USBCLK48MCLKSource_USBPHY );
   RCC_USBHSPLLCLKConfig( RCC_HSBHSPLLCLKSource_HSE );
@@ -89,7 +93,7 @@ void usbhsDeviceRccInit(void)
   RCC_AHBPeriphClockCmd( RCC_AHBPeriph_USBHS, ENABLE );
 }
 
-void usbhsDeviceEndpInit(void)
+void usbhsCdcEndpInit(void)
 {
   uint8_t i;
 
@@ -125,7 +129,7 @@ void usbhsDeviceEndpInit(void)
   }
 }
 
-void usbhsDeviceEnable(FunctionalState sta)
+void usbhsCdcEnable(FunctionalState sta)
 {
   if( sta )
   {
@@ -137,7 +141,7 @@ void usbhsDeviceEnable(FunctionalState sta)
     USBHSD->HOST_CTRL = USBHS_UH_PHY_SUSPENDM;
     USBHSD->CONTROL = USBHS_UC_DMA_EN | USBHS_UC_INT_BUSY | USBHS_UC_SPEED_HIGH;
     USBHSD->INT_EN = USBHS_UIE_SETUP_ACT | USBHS_UIE_TRANSFER | USBHS_UIE_DETECT | USBHS_UIE_SUSPEND;
-    usbhsDeviceEndpInit( );
+    usbhsCdcEndpInit( );
     USBHSD->CONTROL |= USBHS_UC_DEV_PU_EN;
     NVIC_EnableIRQ( USBHS_IRQn );
   }
@@ -275,7 +279,7 @@ void USBHD_Send_Resume(void)
 //     return 0;
 // }
 
-void usbhsDeviceUpdate(void)
+void usbhsCdcUpdate(void)
 {
   if (q_rx_full == true)
   {
@@ -288,16 +292,72 @@ void usbhsDeviceUpdate(void)
   }
 }
 
+bool usbhsCdcFlush(void)
+{
+  qbufferFlush(&q_rx);
+  return true;
+}
+
+uint32_t usbhsCdcAvailable(void)
+{
+  return qbufferAvailable(&q_rx);
+}
+
+uint32_t usbhsCdcWrite(uint8_t *p_data, uint32_t length)
+{
+  // TODO : 구현해야 함 
+  return 0;
+}
+
+uint8_t usbhsRead(void)
+{
+  uint8_t ret = 0;
+
+  qbufferRead(&q_rx, &ret, 1);
+
+  return ret;
+}
+
+bool usbhsIsConnected(void)
+{
+  return is_connected;
+}
+
+bool usbhsIsOpen(void)
+{
+  return is_open;
+}
+
+uint32_t usbhsCdcGetBaud(void)
+{
+  return line_coding.baud;
+}
+
+usbhs_cdc_driver_t *usbhsCdc(void)
+{
+  static usbhs_cdc_driver_t cdc = 
+  {
+    .flush = usbhsCdcFlush,
+    .available = usbhsCdcAvailable,
+    .write = usbhsCdcWrite,
+    .read = usbhsRead,
+    .isConnected = usbhsIsConnected,
+    .isOpen = usbhsIsOpen,
+    .getBaud = usbhsCdcGetBaud
+  };
+
+  return &cdc;
+}
+
 void USBHS_IRQHandler(void)
 {
   uint8_t  intflag, intst, errflag;
   uint16_t len;
-  uint32_t baudrate;
 
   intflag = USBHSD->INT_FG;
   intst = USBHSD->INT_ST;
 
-  sof_cnt++;
+
 
   if (intflag & USBHS_UIF_TRANSFER)
   {
@@ -310,7 +370,7 @@ void USBHS_IRQHandler(void)
         {
           /* end-point 0 data in interrupt */
           case USBHS_UIS_TOKEN_IN | DEF_UEP0:
-            logUsb("USBHS_UIS_TOKEN_IN | DEF_UEP0\n");
+            logUsb("USBHS_UIS_TOKEN_IN | DEF_UEP0 0x%X 0x%X\n", USBHS_SetupReqType, USBHS_SetupReqCode);
             
             if( USBHS_SetupReqLen == 0 )
             {
@@ -319,6 +379,18 @@ void USBHS_IRQHandler(void)
             if (( USBHS_SetupReqType & USB_REQ_TYP_MASK ) != USB_REQ_TYP_STANDARD)
             {
               /* Non-standard request endpoint 0 Data upload */
+
+              if (USBHS_SetupReqCode == CDC_SET_LINE_CTLSTE)
+              {
+                // USB_SETUP_REQ *p_requst = (USB_SETUP_REQ *)USBHS_EP0_Buf;
+
+                line_coding.dtr = (USBHS_SetupReqValue & (1<<0)) ? 1 : 0;
+                line_coding.rts = (USBHS_SetupReqValue & (1<<1)) ? 1 : 0;
+
+                is_open = line_coding.dtr;
+
+                logUsb("  CDC_SET_LINE_CTLSTE : dtr %d, rts %d\n", line_coding.dtr, line_coding.rts);
+              }
             }
             else
             {
@@ -339,7 +411,7 @@ void USBHS_IRQHandler(void)
                   logUsb("  USB_SET_ADDRESS\n");
                   USBHSD->DEV_AD = USBHS_DevAddr;
                   break;
-
+                
                 default:
                   USBHSD->UEP0_TX_LEN = 0;
                   break;
@@ -375,16 +447,16 @@ void USBHS_IRQHandler(void)
         {
           /* end-point 0 data out interrupt */
           case USBHS_UIS_TOKEN_OUT | DEF_UEP0:
-            logUsb("USBHS_UIS_TOKEN_OUT | DEF_UEP0\n");
+            logUsb("USBHS_UIS_TOKEN_OUT | DEF_UEP0 0x%X 0x%X\n", USBHS_SetupReqType, USBHS_SetupReqCode);
             len = USBHSH->RX_LEN;
             if ( intst & USBHS_UIS_TOG_OK )
             {
               /* if any processing about rx, set it here */
               if ( ( USBHS_SetupReqType & USB_REQ_TYP_MASK ) != USB_REQ_TYP_STANDARD )
-              {
+              {                
                 USBHS_SetupReqLen = 0;
                 /* Non-standard request end-point 0 Data download */
-                if ( USBHS_SetupReqCode == CDC_SET_LINE_CODING )
+                if (USBHS_SetupReqCode == CDC_SET_LINE_CODING)
                 {
                   logUsb("  CDC_SET_LINE_CODING\n");
                   /* Save relevant parameters such as serial port baud rate */
@@ -403,7 +475,7 @@ void USBHS_IRQHandler(void)
                   line_coding.baud  += USBHS_EP0_Buf[1] << 8;
                   line_coding.baud  += USBHS_EP0_Buf[2] << 16;
                   line_coding.baud  += USBHS_EP0_Buf[3] << 24;
-                }                
+                }     
               } 
               else
               {
@@ -420,32 +492,8 @@ void USBHS_IRQHandler(void)
 
           /* end-point 1 data out interrupt */
           case USBHS_UIS_TOKEN_OUT | DEF_UEP2:
-            // /* Endp download */
-            // USBHSD->UEP2_RX_CTRL ^= USBHS_UEP_R_TOG_DATA1;
-
-            // /* DMA address */
-            // Uart.Tx_PackLen[ Uart.Tx_LoadNum ] = USBHSD->RX_LEN;
-            // Uart.Tx_LoadNum++;
-            // USBHSD->UEP2_RX_DMA = (uint32_t)(uint8_t *)&UART2_Tx_Buf[ ( Uart.Tx_LoadNum * DEF_USB_HS_PACK_LEN ) ];
-            // if( Uart.Tx_LoadNum >= DEF_UARTx_TX_BUF_NUM_MAX )
-            // {
-            //     Uart.Tx_LoadNum = 0x00;
-            //     USBHSD->UEP2_RX_DMA = (uint32_t)(uint8_t *)&UART2_Tx_Buf[ 0 ];
-            // }
-            // Uart.Tx_RemainNum++;
-
-            // /* Determine if the downlink needs to be paused */
-            // if( Uart.Tx_RemainNum >= ( DEF_UARTx_TX_BUF_NUM_MAX - 2 ) )
-            // {
-            //   USBHSD->UEP2_RX_CTRL &= ~USBHS_UEP_R_RES_MASK;
-            //   USBHSD->UEP2_RX_CTRL |= USBHS_UEP_R_RES_NAK;
-            //   Uart.USB_Down_StopFlag = 0x01;
-            // }
-
-            
 
             qbufferWrite(&q_rx, USBHS_EP2_Rx_Buf, USBHSD->RX_LEN);
-
             if ((q_rx.len - qbufferAvailable(&q_rx)) < (DEF_USB_EP2_HS_SIZE + 1))
             {
                 USBHSD->UEP2_RX_CTRL &= ~USBHS_UEP_R_RES_MASK;
@@ -507,6 +555,7 @@ void USBHS_IRQHandler(void)
 
           case CDC_SET_LINE_CTLSTE:
             logUsb("  CDC_SET_LINE_CTLSTE\n");
+            is_open = true;
             break;
 
           case CDC_SEND_BREAK:
@@ -681,6 +730,7 @@ void USBHS_IRQHandler(void)
           case USB_SET_CONFIGURATION:
             USBHS_DevConfig = (uint8_t)(USBHS_SetupReqValue&0xFF);
             USBHS_DevEnumStatus = 0x01;
+            is_connected = true;
             break;
 
           /* Clear or disable one usb feature */
@@ -897,9 +947,11 @@ void USBHS_IRQHandler(void)
     USBHS_DevAddr = 0;
     USBHS_DevSleepStatus = 0;
     USBHS_DevEnumStatus = 0;
+    is_connected = false;
+    is_open = false;
 
     USBHSD->DEV_AD = 0;
-    usbhsDeviceEndpInit();
+    usbhsCdcEndpInit();
     USBHSD->INT_FG = USBHS_UIF_BUS_RST;
 
     logUsb("USBHS_UIF_BUS_RST\n");
@@ -921,6 +973,9 @@ void USBHS_IRQHandler(void)
       USBHS_DevSleepStatus &= ~0x02;
     }
     logUsb("USBHS_UIF_SUSPEND\n");
+    
+    is_connected = false;
+    is_open = false;
   }
   else
   {

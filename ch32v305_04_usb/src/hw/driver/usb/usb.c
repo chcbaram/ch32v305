@@ -1,7 +1,7 @@
 
 
 #include "usb.h"
-#include "usbhs_device.h"
+#include "usbhs_cdc.h"
 
 
 
@@ -14,7 +14,7 @@ static bool is_connected = false;
 
 bool usbInit(void)
 {
-  usbhsDeviceInit();
+  usbhsCdcInit();
 
   return true;
 }

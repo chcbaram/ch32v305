@@ -3,8 +3,6 @@
 
 
 
-extern uint32_t sof_cnt;
-extern qbuffer_t q_rx;
 
 
 void apInit(void)
@@ -15,7 +13,6 @@ void apInit(void)
 void apMain(void)
 {
   uint32_t pre_time;
-  uint32_t sof_pre;
 
 
   pre_time = millis();
@@ -25,15 +22,15 @@ void apMain(void)
     {
       pre_time = millis();
       ledToggle(_DEF_LED1);
-      // logPrintf("sof %d\n", sof_cnt-sof_pre);
-      // sof_pre = sof_cnt;
+
+      logPrintf("cdc conn : %d, open : %d\n", usbhsCdc()->isConnected(), usbhsCdc()->isOpen());      
     }    
 
     cliMain();
 
     uint32_t rx_len;
 
-    rx_len = qbufferAvailable(&q_rx);
+    rx_len = usbhsCdc()->available();
     if (rx_len > 0)
     {
       uint8_t rx_buf[256];
@@ -41,7 +38,9 @@ void apMain(void)
       if (rx_len > 256)
         rx_len = 256;
 
-      qbufferRead(&q_rx, rx_buf, rx_len);
+      for (int i=0; i<rx_len; i++)
+        rx_buf[i] = usbhsCdc()->read();
+      
       uartWrite(_DEF_UART1, rx_buf, rx_len);       
     }
     

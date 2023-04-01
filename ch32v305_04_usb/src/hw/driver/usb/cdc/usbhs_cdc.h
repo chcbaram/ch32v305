@@ -17,7 +17,7 @@
 #include "hw_def.h"
 #include "string.h"
 #include "usbhs.h"
-#include "usbhs_desc.h"
+#include "usbhs_cdc_desc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,15 +105,23 @@ extern __attribute__ ((aligned(4))) uint8_t USBHS_EP2_Rx_Buf[ ];
 extern __attribute__ ((aligned(4))) uint8_t USBHS_EP3_Tx_Buf[ ];
 
 
-void usbhsDeviceInit(void);
 
-extern void USBHS_Device_Init ( FunctionalState sta );
-extern void USBHS_Device_SetAddress( uint32_t address );
-extern void USBHS_IRQHandler( void );
-extern void USBHS_Sleep_WakeUp_Cfg( void );
-extern void USBHD_Sleep_Wakeup_Operate( void );
-extern uint8_t USBHS_Endp_DataUp( uint8_t endp, uint8_t *pbuf, uint16_t len, uint8_t mod );
+typedef struct
+{
+  bool     (*flush)(void);
+  uint32_t (*available)(void);
+  uint32_t (*write)(uint8_t *p_data, uint32_t length);
+  uint8_t  (*read)(void);
+  bool     (*isConnected)(void);
+  bool     (*isOpen)(void);
+  uint32_t (*getBaud)(void);  
+} usbhs_cdc_driver_t;
 
+
+void usbhsCdcInit(void);
+void usbhsCdcUpdate(void);
+
+usbhs_cdc_driver_t *usbhsCdc(void);
 
 #ifdef __cplusplus
 }

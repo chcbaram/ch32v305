@@ -9,6 +9,8 @@ extern "C" {
 
 #include "hw_def.h"
 
+#include "usbhs_cdc.h"
+
 
 bool usbInit(void);
 void usbDeInit(void);

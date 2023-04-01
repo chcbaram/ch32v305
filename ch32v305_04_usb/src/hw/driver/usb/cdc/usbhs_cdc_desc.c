@@ -1,4 +1,4 @@
-#include "usbhs_desc.h"
+#include "usbhs_cdc_desc.h"
 
 
 
