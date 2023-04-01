@@ -33,22 +33,6 @@ void apMain(void)
     }    
 
     cliMain();
-
-    uint32_t rx_len;
-
-    rx_len = uartAvailable(_DEF_UART2);
-    if (rx_len > 0)
-    {
-      uint8_t rx_buf[256];
-
-      if (rx_len > 256)
-        rx_len = 256;
-
-      for (int i=0; i<rx_len; i++)
-        rx_buf[i] = uartRead(_DEF_UART2);
-      
-      uartWrite(_DEF_UART2, rx_buf, rx_len);   
-    } 
   }
 }
 
@@ -92,10 +76,24 @@ void cliInfo(cli_args_t *args)
     ret = true;
   }
 
+  if (args->argc == 1 && args->isStr(0, "usb_rx"))
+  {
 
+    while(cliKeepLoop())
+    {
+      if (uartAvailable(_DEF_UART2) > 0)
+      {
+        cliPrintf("usb rx : 0x%02X\n", uartRead(_DEF_UART2));
+      }
+    }
+    
+
+      
+  }
   if (ret == false)
   {
     cliPrintf("info usb\n");
     cliPrintf("info usb_tx\n");
+    cliPrintf("info usb_rx\n");
   }
 }
