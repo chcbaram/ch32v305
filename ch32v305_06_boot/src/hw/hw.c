@@ -42,11 +42,6 @@ void jumpToFw(void)
 
   NVIC_EnableIRQ(Software_IRQn);
   NVIC_SetPendingIRQ(Software_IRQn);
-
-  // __asm("li  a6, 0x8400");
-  // __asm("jr  a6");
-  // while(1);  
-  // (*jump_func)();
 }
 
 void SW_Handler(void) __attribute__((interrupt("machine")));
