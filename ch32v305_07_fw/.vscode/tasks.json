@@ -19,11 +19,22 @@
       "command": "cmake --build build --target clean"
     },
     {
+      "label": "down by loader mac",
+      "type": "shell",
+      "command": "./tools/mac/ch32v30x_loader -p /dev/cu.usbmodem01234567891 -f ./build/ch32v305_fw.bin -r"
+    },    
+    {
+      "label": "down by loader win",
+      "type": "shell",
+      "command": "./tools/win/ch32v30x_loader.exe -p com10 -f ./build/ch32v305_fw.bin -r"
+    },   
+    {
       "label": "down by openocd",
       "type": "shell",
       "command": "${env:RISCV_OPENOCD_PATH}/openocd -f ${env:RISCV_OPENOCD_PATH}/wch-riscv.cfg -c 'init;halt;program build/ch32v305_fw.bin 0x0;reset;resume;exit'"
     },
- 
+
+
     {
       "label": "run-openocd",
       "type": "process",

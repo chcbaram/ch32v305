@@ -11,3 +11,5 @@ CTestTestfile.cmake
 _deps
 ch32v305_01_led/.vscode/c_cpp_properties.json
 ch32v305_02_uart/.vscode/c_cpp_properties.json
+ch32v305_07_fw/build/
+ch32v30x_loader/build/
